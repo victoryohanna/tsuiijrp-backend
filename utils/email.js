@@ -23,11 +23,9 @@ exports.sendReviewInvitation = async (email, journalId) => {
   const mailOptions = {
     from: process.env.USER_EMAIL,
     to: [
-      "victoryohanna@gmail.com",
-      "tanamz5562@gmail.com",
-      // process.env.FIRST_REVIEWER,
-      // process.env.SECOND_REVIEWER,
-      // process.env.THIRD_REVIEWER,
+      process.env.FIRST_REVIEWER,
+      process.env.SECOND_REVIEWER,
+      process.env.THIRD_REVIEWER,
     ],
     subject: "New Journal Submission for Review",
     html: `
@@ -58,4 +56,3 @@ exports.sendReviewInvitation = async (email, journalId) => {
     return false;
   }
 };
-
