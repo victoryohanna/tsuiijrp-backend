@@ -18,8 +18,8 @@ exports.sendReviewInvitation = async (email, journalId) => {
   const token = generateToken(journalId, "reviewer");
 
   // Use the landing page with both journalId and token as query parameters
-  const reviewLink = `${process.env.BASE_URL}/email-redirect.html?journalId=${journalId}&token=${token}`;
-
+  //const reviewLink = `${process.env.BASE_URL}/email-redirect.html?journalId=${journalId}&token=${token}`;
+  const reviewLink = `${process.env.BASE_URL}/#/review/${journalId}?token=${token}`;
   const mailOptions = {
     from: process.env.USER_EMAIL,
     to: [
@@ -93,7 +93,7 @@ exports.sendReviewInvitation = async (email, journalId) => {
   }
 };
 
-// // utils/email.js
+// utils/email.js
 // const nodemailer = require("nodemailer");
 // const path = require("path");
 // const { generateToken } = require("./auth");
