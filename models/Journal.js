@@ -60,6 +60,14 @@ const JournalSchema = new mongoose.Schema({
     type: String,
     required: [true, "File URL is required"],
   },
+  previewUrl:{
+    type:String
+  },
+
+  cloudinaryPublicId:{
+    type:String
+  },
+  
   fileType: {
     type: String,
     enum: ["pdf", "doc", "docx"],
