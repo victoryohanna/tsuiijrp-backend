@@ -26,6 +26,7 @@ exports.sendReviewInvitation = async (email, journalId) => {
       process.env.FIRST_REVIEWER,
       process.env.SECOND_REVIEWER,
       process.env.THIRD_REVIEWER,
+      process.env.FOURTH_REVIEWER,
     ].filter((email) => email), // Filter out any empty emails
     subject:
       "New Journal Submission for Review - International Interdisciplinary Journal of Religion & Philosophy",
