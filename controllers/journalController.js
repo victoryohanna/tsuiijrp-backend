@@ -641,9 +641,168 @@ router.get("/journals/:id", async (req, res) => {
     });
   }
 });
+// @desc    Get journal for review
+// @route   GET /journals/review/:id
+// @access  Private (Reviewer or Admin only)
+router.get("/review/:id", protect(["reviewer", "admin"]), async (req, res) => {
+  try {
+    const journal = await Journal.findById(req.params.id);
 
+    if (!journal) {
+      return res.status(404).json({
+        success: false,
+        error: "Journal not found",
+      });
+    }
 
-// All other routes (review, status update, stats, delete) remain the same...
-// Make sure to apply the same signed URL logic to the GET /review/:id route if needed.
+    const journalObj = journal.toObject();
+    
+    // Add enhanced URLs for review
+    if (journalObj.cloudinaryPublicId) {
+      if (journalObj.fileType === 'pdf') {
+        journalObj.previewUrl = cloudinary.url(journalObj.cloudinaryPublicId, {
+          format: 'jpg',
+          page: 1,
+          width: 800,
+          height: 1000,
+          crop: 'fill',
+          quality: 'auto',
+        });
+      }
+      
+      // Force download URL
+      journalObj.downloadUrl = journalObj.fileUrl.replace('/upload/', '/upload/fl_attachment/');
+    }
+
+    res.status(200).json({
+      success: true,
+      data: journalObj,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Server Error",
+    });
+  }
+});
+
+// @desc    Update journal status (approve/reject)
+// @route   PUT /journals/:id/status
+// @access  Private (Reviewer or Admin only)
+router.put("/:id/status", protect(["reviewer", "admin"]), async (req, res) => {
+  try {
+    const { status, reviewComments } = req.body;
+
+    if (!["approved", "rejected", "pending"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid status value",
+      });
+    }
+
+    const journal = await Journal.findByIdAndUpdate(
+      req.params.id,
+      {
+        status,
+        reviewedBy: req.user.id,
+        reviewedAt: Date.now(),
+        reviewComments,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!journal) {
+      return res.status(404).json({
+        success: false,
+        error: "Journal not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: journal,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Server Error",
+    });
+  }
+});
+
+// @desc    Get journal statistics
+// @route   GET /journals/stats
+// @access  Private
+router.get("/stats", protect(), async (req, res) => {
+  try {
+    const stats = await Journal.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          pending: {
+            $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] }
+          },
+          approved: {
+            $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] }
+          },
+          rejected: {
+            $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: stats[0] || { total: 0, pending: 0, approved: 0, rejected: 0 }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Server Error"
+    });
+  }
+});
+
+// @desc    Delete a journal
+// @route   DELETE /journals/:id
+// @access  Private (Admin only)
+router.delete("/:id", protect(["admin"]), async (req, res) => {
+  try {
+    const journal = await Journal.findById(req.params.id);
+
+    if (!journal) {
+      return res.status(404).json({
+        success: false,
+        error: "Journal not found"
+      });
+    }
+
+    // Delete file from Cloudinary if it exists
+    if (journal.cloudinaryPublicId) {
+      try {
+        await cloudinary.uploader.destroy(journal.cloudinaryPublicId, {
+          resource_type: 'raw'
+        });
+      } catch (cloudinaryError) {
+        console.error('Error deleting file from Cloudinary:', cloudinaryError);
+        // Continue with deletion even if Cloudinary deletion fails
+      }
+    }
+
+    await Journal.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: "Journal deleted successfully"
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Server Error"
+    });
+  }
+});
 
 module.exports = router;
