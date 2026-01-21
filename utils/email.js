@@ -3,33 +3,69 @@ const path = require("path");
 const { generateToken } = require("./auth");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
+// --- DEBUGGING: SANITY CHECK ---
+console.log("Checking Environment Variables...");
+console.log("- EMAIL_USER exists:", !!process.env.EMAIL_USER);
+console.log("- APP_PASSWORD exists:", !!process.env.PASS);
+console.log("- REVIEWER_1 exists:", !!process.env.FIRST_REVIEWER);
+// -------------------------------
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // Port 465 requires secure: true
   auth: {
-    type: "OAuth2",
     user: process.env.EMAIL_USER,
-    clientId: process.env.OAUTH_CLIENTID,
-    clientSecret: process.env.OAUTH_CLIENT_SECRET,
-    refreshToken: process.env.OAUTH_REFRESH_TOKEN,
+    pass: process.env.EMAIL_APP_PASSWORD,
   },
+  // If connection is slow, this gives it more time before erroring
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
 });
 
+// const transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     type: "OAuth2",
+//     user: process.env.EMAIL_USER,
+//     clientId: process.env.OAUTH_CLIENTID,
+//     clientSecret: process.env.OAUTH_CLIENT_SECRET,
+//     refreshToken: process.env.OAUTH_REFRESH_TOKEN,
+//   },
+// });
+
+
 exports.sendReviewInvitation = async (email, journalId) => {
+  // Verify connection configuration before sending
+  await transporter.verify();
+  console.log("Transporter is ready to take our messages");
+
   const token = generateToken(journalId, "reviewer");
 
   // Use the landing page with both journalId and token as query parameters
   //const reviewLink = `${process.env.BASE_URL}/email-redirect.html?journalId=${journalId}&token=${token}`;
   const reviewLink = `${process.env.BASE_URL}/#/review/${journalId}?token=${token}`;
+
+  // Collect all potential reviewers from .env
+  const reviewers = [
+    process.env.FIRST_REVIEWER,
+    process.env.SECOND_REVIEWER,
+    process.env.THIRD_REVIEWER,
+    process.env.FOURTH_REVIEWER,
+    process.env.FIFTH_REVIEWER,
+    process.env.SIXTH_REVIEWER,
+  ].filter((email) => email && email.trim() !== "");
+
+  if (reviewers.length === 0) {
+    console.error("No reviewer emails found in environment variables.");
+    return false;
+  }
+
   const mailOptions = {
     from: process.env.USER_EMAIL,
-    to: [
-      process.env.FIRST_REVIEWER,
-      process.env.SECOND_REVIEWER,
-      process.env.THIRD_REVIEWER,
-      process.env.FOURTH_REVIEWER,
-      process.env.FIFITH_REVIEWER,
-      process.env.SIXT_REVIEWER,
-    ].filter((email) => email), // Filter out any empty emails
+    to: reviewers.join(", "),
+
     subject:
       "New Journal Submission for Review - International Interdisciplinary Journal of Religion & Philosophy",
     html: `
@@ -87,12 +123,24 @@ exports.sendReviewInvitation = async (email, journalId) => {
   };
 
   try {
-    const result = await transporter.sendMail(mailOptions);
-    console.log(`Review invitation sent for journal ${journalId}`);
+    await transporter.sendMail(mailOptions);
+    console.log(
+      `Review invitation successfully sent to: ${reviewers.join(", ")}`
+    );
     return true;
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("Nodemailer Error:", error.message);
     return false;
   }
-};
+
+  // try {
+  //   console.log("Attempting to send email to:", mailOptions.to);
+  //   const result = await transporter.sendMail(mailOptions);
+  //   console.log(`Review invitation sent for journal ${journalId}`);
+  //   return true;
+  // } catch (error) {
+  //   console.error("Error sending email:", error);
+  //   return false;
+  // }
+};;;
 
