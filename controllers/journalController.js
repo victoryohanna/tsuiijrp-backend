@@ -130,6 +130,7 @@ router.post("/submit", upload.single("file"), async (req, res, next) => {
     console.error("Error submitting journal:", error);
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((val) => val.message);
+      console.log("message:", message)
       return res.status(400).json({
         success: false,
         error: messages,
