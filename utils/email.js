@@ -10,29 +10,36 @@ console.log("- APP_PASSWORD exists:", !!process.env.PASS);
 console.log("- REVIEWER_1 exists:", !!process.env.FIRST_REVIEWER);
 // -------------------------------
 
+
+
 // const transporter = nodemailer.createTransport({
 //   service: "gmail",
-//   host: "smtp.gmail.com",
-//   port: 465,
-//   secure: true, // Port 465 requires secure: true
 //   auth: {
+//     type: "OAuth2",
 //     user: process.env.EMAIL_USER,
-//     pass: process.env.EMAIL_APP_PASSWORD,
+//     clientId: process.env.OAUTH_CLIENTID,
+//     clientSecret: process.env.OAUTH_CLIENT_SECRET,
+//     refreshToken: process.env.OAUTH_REFRESH_TOKEN,
 //   },
-//   // If connection is slow, this gives it more time before erroring
-//   connectionTimeout: 20000,
-//   greetingTimeout: 20000,
 // });
 
+
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // Use SSL
   auth: {
-    type: "OAuth2",
     user: process.env.EMAIL_USER,
-    clientId: process.env.OAUTH_CLIENTID,
-    clientSecret: process.env.OAUTH_CLIENT_SECRET,
-    refreshToken: process.env.OAUTH_REFRESH_TOKEN,
+    pass: process.env.PASS,
   },
+  // Add these specific socket settings for Cloud environments
+  tls: {
+    rejectUnauthorized: false, // Helps if there are self-signed cert issues in the hop
+    servername: "smtp.gmail.com",
+  },
+  debug: true, // Show detailed logs in your console
+  logger: true, // Log information to console
+  connectionTimeout: 30000, // Wait 30 seconds
 });
 
 
