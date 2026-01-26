@@ -20,7 +20,6 @@ require("dotenv").config();
 // @access  Public
 router.post(
   "/submit",
-  protect(["admin", "reviewer"]),
   upload.single("file"),
   async (req, res, next) => {
     try {
@@ -301,59 +300,7 @@ router.get("/journals/:id", async (req, res) => {
 });
 
 
-// @desc    Get single journal
-// @route   GET /journals/:id
-// @access  Public
-// router.get("/journals/:id", async (req, res) => {
-//   try {
-//     const journal = await Journal.findById(req.params.id);
 
-//     if (!journal) {
-//       return res.status(404).json({
-//         success: false,
-//         error: "Journal not found",
-//       });
-//     }
-
-//     const journalObj = journal.toObject();
-    
-//     // ✨ ADDED: Generate a temporary, signed URL for the private file
-//     if (journalObj.cloudinaryPublicId) {
-//       const signedUrl = cloudinary.url(journalObj.cloudinaryPublicId, {
-//         resource_type: 'raw',
-//         type: 'private',
-//         sign_url: true,
-//         expires_at: Math.round((new Date().getTime() / 1000) + 3600), // URL is valid for 1 hour
-//       });
-
-//       // Replace the permanent URL with the temporary signed one for the frontend
-//       journalObj.fileUrl = signedUrl;
-//     }
-    
-//     // Add preview URL for PDF files
-//     if (journalObj.fileType === 'pdf' && journalObj.cloudinaryPublicId) {
-//       journalObj.previewUrl = cloudinary.url(journalObj.cloudinaryPublicId, {
-//         format: 'jpg',
-//         page: 1,
-//         width: 600,
-//         height: 800,
-//         crop: 'fill',
-//         quality: 'auto',
-//       });
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//       data: journalObj,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({
-//       success: false,
-//       error: "Server Error",
-//     });
-//   }
-// });
 // @desc    Get journal for review
 // @route   GET /journals/review/:id
 // @access  Private (Reviewer or Admin only)
