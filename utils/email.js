@@ -26,20 +26,21 @@ console.log("- REVIEWER_1 exists:", !!process.env.FIRST_REVIEWER);
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // Use SSL
+  port: 587,
+  secure: false, // Use SSL
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.PASS,
   },
   // Add these specific socket settings for Cloud environments
   tls: {
-    rejectUnauthorized: false, // Helps if there are self-signed cert issues in the hop
-    servername: "smtp.gmail.com",
+    // This tells Nodemailer to upgrade the connection to secure
+    ciphers: "SSLv3",
+    rejectUnauthorized: false,
   },
   debug: true, // Show detailed logs in your console
   logger: true, // Log information to console
-  connectionTimeout: 30000, // Wait 30 seconds
+  connectionTimeout: 20000, // Wait 30 seconds
 });
 
 
