@@ -48,6 +48,8 @@ apiKey.apiKey = process.env.BREVO_EMAIL_API_KEY;
 exports.sendReviewInvitation = async (ignored, journalId) => {
   let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
 
+  const reviewLink = `${process.env.BASE_URL}/#/review/${journalId}?token=${token}`;
+
   const reviewers = [
     process.env.FIRST_REVIEWER,
     process.env.SECOND_REVIEWER,
