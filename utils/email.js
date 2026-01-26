@@ -48,6 +48,11 @@ apiKey.apiKey = process.env.BREVO_EMAIL_API_KEY;
 exports.sendReviewInvitation = async (ignored, journalId) => {
   let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
 
+  // 1. Generate the security token for this specific journal review
+  // This replaces the need for OAuth/Refresh tokens for the reviewer
+  const token = generateToken(journalId, "reviewer");
+
+  // 2. Construct the link (Ensure BASE_URL is your Frontend URL, e.g., http://localhost:3000)
   const reviewLink = `${process.env.BASE_URL}/#/review/${journalId}?token=${token}`;
 
   const reviewers = [
@@ -61,8 +66,12 @@ exports.sendReviewInvitation = async (ignored, journalId) => {
     .filter((email) => email)
     .map((email) => ({ email }));
 
-  sendSmtpEmail.subject =
-    "New Journal Submission for Review - International Interdisciplinary Journal of Religion & Philosophy";
+  if (reviewers.length === 0) {
+    console.error("No reviewers found in environment variables.");
+    return false;
+  }
+
+  sendSmtpEmail.subject = "New Journal Submission for Review - IIJRP";
   sendSmtpEmail.htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6;">
         <div style="background-color: #2c3e50; color: white; padding: 20px; text-align: center;">
@@ -91,30 +100,21 @@ exports.sendReviewInvitation = async (ignored, journalId) => {
           </div>
           
           <p style="font-size: 14px; color: #666;">
-            <strong>Important:</strong> This review link is unique to you and will expire in 7 days.
-            For security reasons, please do not share this link with anyone.
+            <strong>Important:</strong> This link grants direct access to the private submission and will expire in 7 days.
+            For security reasons, do not forward this email.
           </p>
-          
-          <p>If you encounter any issues with the link, please contact the journal administrator.</p>
           
           <p>Thank you for your contribution to the academic community.</p>
           
           <p style="margin-top: 30px;">
             Best regards,<br>
             <strong>Editorial Team</strong><br>
-            International Interdisciplinary Journal of Religion & Philosophy<br>
-            Faculty of Religion and Philosophy, Taraba State University, Jalingo
-          </p>
-        </div>
-        
-        <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666;">
-          <p style="margin: 0;">
-            This is an automated message. Please do not reply to this email.<br>
-            © ${new Date().getFullYear()} IIJRP Journal Management System
+            IIJRP
           </p>
         </div>
       </div>
     `;
+
   sendSmtpEmail.sender = {
     name: "IIJRP System",
     email: process.env.EMAIL_USER,
@@ -130,7 +130,6 @@ exports.sendReviewInvitation = async (ignored, journalId) => {
     return false;
   }
 };
-
 // exports.sendReviewInvitation = async (email, journalId) => {
 //   // Verify connection configuration before sending
 //   await transporter.verify();
