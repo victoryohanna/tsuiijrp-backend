@@ -210,41 +210,6 @@ router.get("/admin/all", protect(["admin", "reviewer"]), async (req, res) => {
   }
 });
 
-// @desc    Get all journals
-// @route   GET /journals
-// @access  Public
-// router.get("/journals", async (req, res, next) => {
-//   try {
-//     const journals = await Journal.find().sort({ submittedAt: -1 });
-
-//     const enhancedJournals = journals.map(journal => {
-//       const journalObj = journal.toObject();
-//       if (journalObj.fileType === 'pdf' && journalObj.cloudinaryPublicId) {
-//         journalObj.previewUrl = cloudinary.url(journalObj.cloudinaryPublicId, {
-//           format: 'jpg',
-//           page: 1,
-//           width: 300,
-//           height: 400,
-//           crop: 'fill',
-//           quality: 'auto',
-//         });
-//       }
-//       return journalObj;
-//     });
-
-//     return res.status(200).json({
-//       success: true,
-//       count: enhancedJournals.length,
-//       data: enhancedJournals,
-//     });
-//   } catch (error) {
-//     return res.status(500).json({
-//       success: false,
-//       error: "Server Error",
-//     });
-//   }
-// });
-
 
 router.get("/journals/:id", async (req, res) => {
   try {
