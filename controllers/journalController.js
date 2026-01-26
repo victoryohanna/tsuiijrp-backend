@@ -151,12 +151,19 @@ router.post(
   }
 );
 
+
 // @desc    Get all journals
 // @route   GET /journals
-// @access  Public
-router.get("/journals", async (req, res, next) => {
+// @access  Public (Filter by approved) / Private (Admins see all)
+router.get("/journals", async (req, res) => {
   try {
-    const journals = await Journal.find().sort({ submittedAt: -1 });
+    //  Define the query filter
+    // If it's a public request, we ONLY show "approved"
+    let query = { status: "approved" };
+
+    //  Optional: If you want logged-in Admins/Reviewers to see everything
+    // You would check the token here. For the simple public list:
+    const journals = await Journal.find(query).sort({ submittedAt: -1 });
 
     const enhancedJournals = journals.map(journal => {
       const journalObj = journal.toObject();
@@ -185,6 +192,59 @@ router.get("/journals", async (req, res, next) => {
     });
   }
 });
+
+// @desc    Get all journals for Dashboard (Admin/Reviewer only)
+// @route   GET /journals/admin/all
+// @access  Private
+router.get("/admin/all", protect(["admin", "reviewer"]), async (req, res) => {
+  try {
+    // Admin/Reviewers see everything (pending, approved, rejected)
+    const journals = await Journal.find().sort({ submittedAt: -1 });
+    
+    res.status(200).json({
+      success: true,
+      count: journals.length,
+      data: journals,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Server Error" });
+  }
+});
+
+// @desc    Get all journals
+// @route   GET /journals
+// @access  Public
+// router.get("/journals", async (req, res, next) => {
+//   try {
+//     const journals = await Journal.find().sort({ submittedAt: -1 });
+
+//     const enhancedJournals = journals.map(journal => {
+//       const journalObj = journal.toObject();
+//       if (journalObj.fileType === 'pdf' && journalObj.cloudinaryPublicId) {
+//         journalObj.previewUrl = cloudinary.url(journalObj.cloudinaryPublicId, {
+//           format: 'jpg',
+//           page: 1,
+//           width: 300,
+//           height: 400,
+//           crop: 'fill',
+//           quality: 'auto',
+//         });
+//       }
+//       return journalObj;
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       count: enhancedJournals.length,
+//       data: enhancedJournals,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       success: false,
+//       error: "Server Error",
+//     });
+//   }
+// });
 
 // @desc    Get single journal
 // @route   GET /journals/:id
