@@ -10,30 +10,30 @@ console.log("- APP_PASSWORD exists:", !!process.env.PASS);
 console.log("- REVIEWER_1 exists:", !!process.env.FIRST_REVIEWER);
 // -------------------------------
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // Port 465 requires secure: true
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_APP_PASSWORD,
-  },
-  // If connection is slow, this gives it more time before erroring
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-});
-
 // const transporter = nodemailer.createTransport({
 //   service: "gmail",
+//   host: "smtp.gmail.com",
+//   port: 465,
+//   secure: true, // Port 465 requires secure: true
 //   auth: {
-//     type: "OAuth2",
 //     user: process.env.EMAIL_USER,
-//     clientId: process.env.OAUTH_CLIENTID,
-//     clientSecret: process.env.OAUTH_CLIENT_SECRET,
-//     refreshToken: process.env.OAUTH_REFRESH_TOKEN,
+//     pass: process.env.EMAIL_APP_PASSWORD,
 //   },
+//   // If connection is slow, this gives it more time before erroring
+//   connectionTimeout: 20000,
+//   greetingTimeout: 20000,
 // });
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    type: "OAuth2",
+    user: process.env.EMAIL_USER,
+    clientId: process.env.OAUTH_CLIENTID,
+    clientSecret: process.env.OAUTH_CLIENT_SECRET,
+    refreshToken: process.env.OAUTH_REFRESH_TOKEN,
+  },
+});
 
 
 exports.sendReviewInvitation = async (email, journalId) => {
