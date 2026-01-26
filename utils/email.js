@@ -47,12 +47,7 @@ apiKey.apiKey = process.env.BREVO_EMAIL_API_KEY;
 
 exports.sendReviewInvitation = async (ignored, journalId) => {
   let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-
-  // 1. Generate the security token for this specific journal review
-  // This replaces the need for OAuth/Refresh tokens for the reviewer
   const token = generateToken(journalId, "reviewer");
-
-  // 2. Construct the link (Ensure BASE_URL is your Frontend URL, e.g., http://localhost:3000)
   const reviewLink = `${process.env.BASE_URL}/#/review/${journalId}?token=${token}`;
 
   const reviewers = [
@@ -116,7 +111,7 @@ exports.sendReviewInvitation = async (ignored, journalId) => {
     `;
 
   sendSmtpEmail.sender = {
-    name: "IIJRP System",
+    name: "International Interdisciplinary Journal of Religion & Philosophy",
     email: process.env.EMAIL_USER,
   };
   sendSmtpEmail.to = reviewers;
