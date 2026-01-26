@@ -1,13 +1,13 @@
 const nodemailer = require("nodemailer");
 const path = require("path");
 const { generateToken } = require("./auth");
+const SibApiV3Sdk = require("@getbrevo/brevo");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
 // Initialize Brevo
 let apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 let apiKey = apiInstance.authentications['apiKey'];
 apiKey.apiKey = process.env.BREVO_EMAIL_API_KEY; 
-
 
 
 //send email using OAUTH2
