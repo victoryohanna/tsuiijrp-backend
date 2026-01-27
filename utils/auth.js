@@ -20,10 +20,14 @@ exports.verifyToken = (token) => {
 // Middleware to protect routes
 exports.protect = (roles = []) => {
   return (req, res, next) => {
-    // Get token from header
-    const token = req.header("x-auth-token");
+    // Check both standard Authorization header AND x-auth-token
+    let token = req.header("x-auth-token") || req.header("Authorization");
 
-    // Check if no token
+    // Handle "Bearer <token>" format
+    if (token && token.startsWith("Bearer")) {
+      token = token.split(" ")[1];
+    }
+
     if (!token) {
       return res.status(401).json({
         success: false,

@@ -390,6 +390,32 @@ router.get("/stats", protect(), async (req, res) => {
   }
 });
 
+// @desc    Assign a reviewer to a journal
+// @route   PUT /api/journals/:id/assign
+// @access  Private/Admin
+router.put("/:id/assign", protect, async (req, res) => {
+  try {
+    const { reviewerId } = req.body;
+
+    const journal = await Journal.findByIdAndUpdate(
+      req.params.id,
+      { 
+        assignedReviewer: reviewerId,
+        status: "pending" // Ensure it stays pending when assigned
+      },
+      { new: true }
+    );
+
+    if (!journal) {
+      return res.status(404).json({ success: false, error: "Journal not found" });
+    }
+
+    res.json({ success: true, data: journal });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Server Error" });
+  }
+});
+
 // @desc    Delete a journal
 // @route   DELETE /journals/:id
 // @access  Private (Admin only)

@@ -70,42 +70,6 @@ router.post("/register", async (req, res) => {
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
-// router.post("/register", async (req, res) => {
-//   try {
-//     const { name, email, password, role } = req.body;
-
-//     const result = await User.findOne({ email });
-//     if (result) return res.status(400).json({ message: "User already exist" });
-    
-//     // Create user
-//     const user = await User.create({
-//       name,
-//       email,
-//       password,
-//       role: role || "user",
-//     });
-
-//     // Create token
-//     const token = generateToken(user._id, user.role);
-    
-//     res.status(201).json({
-//       success: true,
-//       token,
-//       user: {
-//         id: user._id,
-//         name: user.name,
-//         email: user.email,
-//         role: user.role,
-//       },
-//     });
-//   } catch (err) {
-//     console.error(err);
-//     return res.status(500).json({
-//       success: false,
-//       error: "Server error",
-//     });
-//   }
-// });
 
 // @desc    Login user
 // @route   POST /login
@@ -126,6 +90,7 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
+      console.log("DEBUG: Email not found in DB:", email);
       return res.status(401).json({
         success: false,
         error: "Invalid credentials",
@@ -134,6 +99,7 @@ router.post("/login", async (req, res) => {
 
     // Check if password matches
     const isMatch = await user.matchPassword(password);
+    console.log("DEBUG: Password match result:", isMatch);
 
     if (!isMatch) {
       return res.status(401).json({
@@ -161,6 +127,19 @@ router.post("/login", async (req, res) => {
       success: false,
       error: "Server error",
     });
+  }
+});
+
+// @desc    Get all reviewers
+// @route   GET /api/users/reviewers
+// @access  Private/Admin
+router.get("/reviewers", protect(), async (req, res) => {
+  try {
+    // Only fetch users who have the 'reviewer' role
+    const reviewers = await User.find({ role: "reviewer" }).select("name email _id");
+    res.json({ success: true, data: reviewers });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Server Error" });
   }
 });
 
