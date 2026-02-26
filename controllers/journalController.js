@@ -29,19 +29,21 @@ router.post(
         });
       }
 
-      // Get the new simplified form data
+      // Get form data
       const {
         fullName,
         email,
         phoneNumber,
-        address,
+        journalTitle,
+        category,
+        openAccess,
       } = req.body;
 
       // Validate required fields
-      if (!fullName || !email || !phoneNumber || !address) {
+      if (!fullName || !email || !phoneNumber || !journalTitle || !category) {
         return res.status(400).json({
           success: false,
-          error: "Please provide all required fields: fullName, email, phoneNumber, and address",
+          error: "Please provide all required fields",
         });
       }
 
@@ -77,10 +79,10 @@ router.post(
               resource_type: "raw",
               folder: "journal_submissions",
               type: "private",
-              // Add metadata to help identify the submission
               context: {
                 submitter: fullName,
                 email: email,
+                title: journalTitle,
               },
             },
             (error, result) => {
@@ -101,15 +103,19 @@ router.post(
         });
       }
 
-      // Create journal entry with simplified fields
+      // Create journal entry with new fields
       const journal = await Journal.create({
         // Submitter information
         submittedBy: {
           fullName,
           email,
           phoneNumber,
-          address,
         },
+        
+        // Journal information
+        title: journalTitle,
+        category,
+        openAccess: true, // Always true
         
         // File information
         fileUrl: cloudinaryResult.secure_url,
@@ -125,8 +131,6 @@ router.post(
         
         // Timestamps
         submittedAt: new Date(),
-        
-        // Optional: Track submission source
         submissionSource: "public_form",
       });
 
@@ -138,12 +142,12 @@ router.post(
           {
             fullName,
             email,
+            title: journalTitle,
             fileName: req.file.originalname
           }
         );
       } catch (emailError) {
         console.error("Failed to send review invitation email:", emailError);
-        // Don't fail the submission if email fails
       }
 
       // Return success response
@@ -153,6 +157,8 @@ router.post(
           _id: journal._id,
           fullName: journal.submittedBy.fullName,
           email: journal.submittedBy.email,
+          title: journal.title,
+          category: journal.category,
           fileName: journal.fileName,
           submittedAt: journal.submittedAt,
           status: journal.status,
@@ -163,7 +169,6 @@ router.post(
     } catch (error) {
       console.error("Error submitting journal:", error);
       
-      // Handle validation errors
       if (error.name === "ValidationError") {
         const messages = Object.values(error.errors).map((val) => val.message);
         return res.status(400).json({
@@ -172,15 +177,6 @@ router.post(
         });
       }
       
-      // Handle duplicate key errors
-      if (error.code === 11000) {
-        return res.status(400).json({
-          success: false,
-          error: "A submission with this information already exists",
-        });
-      }
-      
-      // General server error
       res.status(500).json({
         success: false,
         error: "Server Error. Please try again later.",
@@ -189,143 +185,6 @@ router.post(
   }
 );
 
-
-// // @desc    Submit a new journal
-// // @route   POST /journals
-// // @access  Public
-// router.post(
-//   "/submit",
-//   upload.single("file"),
-//   async (req, res, next) => {
-//     try {
-//       if (!req.file) {
-//         return res.status(400).json({
-//           success: false,
-//           error: "No file uploaded",
-//         });
-//       }
-
-//       const {
-//         title,
-//         authors,
-//         abstract,
-//         keywords,
-//         journalName,
-//         impactFactor,
-//         description,
-//         publisher,
-//         category,
-//         issn,
-//         publicationDate,
-//         openAccess,
-//         references,
-//         citations,
-//       } = req.body;
-
-//       const fileExt = path
-//         .extname(req.file.originalname)
-//         .toLowerCase()
-//         .substring(1);
-//       const allowedTypes = ["pdf", "doc", "docx"];
-
-//       if (!allowedTypes.includes(fileExt)) {
-//         return res.status(400).json({
-//           success: false,
-//           error: "Invalid file type. Only PDF and Word documents are allowed",
-//         });
-//       }
-
-//       // ✅ MODIFIED: Upload file to Cloudinary as 'private' for security
-//       let cloudinaryResult;
-//       try {
-//         cloudinaryResult = await new Promise((resolve, reject) => {
-//           const uploadStream = cloudinary.uploader.upload_stream(
-//             {
-//               resource_type: "raw", // Use 'raw' for non-image files
-//               folder: "journals",
-//               type: "private", // <-- IMPORTANT: Upload as a private asset
-//             },
-//             (error, result) => {
-//               if (error) reject(error);
-//               else resolve(result);
-//             }
-//           );
-
-//           const bufferStream = new stream.PassThrough();
-//           bufferStream.end(req.file.buffer);
-//           bufferStream.pipe(uploadStream);
-//         });
-//       } catch (uploadError) {
-//         console.error("Cloudinary upload error:", uploadError);
-//         return res.status(500).json({
-//           success: false,
-//           error: "Failed to upload file to cloud storage",
-//         });
-//       }
-
-//       // Preview URL generation for PDFs (works even for private files)
-//       let previewUrl = null;
-//       if (fileExt === "pdf") {
-//         previewUrl = cloudinary.url(cloudinaryResult.public_id, {
-//           format: "jpg",
-//           page: 1,
-//           width: 300,
-//           height: 400,
-//           crop: "fill",
-//           quality: "auto",
-//         });
-//       }
-
-//       const journal = await Journal.create({
-//         title,
-//         authors: authors.split(",").map((author) => author.trim()),
-//         abstract,
-//         keywords: keywords.split(",").map((keyword) => keyword.trim()),
-//         journalName,
-//         impactFactor,
-//         description,
-//         publisher,
-//         category,
-//         issn,
-//         publicationDate: publicationDate || Date.now(),
-//         fileUrl: cloudinaryResult.secure_url, // Store the permanent, non-signed URL
-//         previewUrl: previewUrl,
-//         fileType: fileExt,
-//         status: "pending",
-//         openAccess: openAccess === "true" || openAccess === true,
-//         references: references
-//           ? references.split(",").map((ref) => ref.trim())
-//           : [],
-//         citations: citations ? parseInt(citations) : 0,
-//         submittedBy: req.user?.id || null,
-//         cloudinaryPublicId: cloudinaryResult.public_id, // Store public_id for signing
-//       });
-
-//       await sendReviewInvitation(process.env.REVIEWER_EMAIL, journal._id);
-
-//       res.status(201).json({
-//         success: true,
-//         data: journal.toObject(),
-//       });
-//     } catch (error) {
-//       console.error("Error submitting journal:", error);
-//       if (error.name === "ValidationError") {
-//         const messages = Object.values(error.errors).map((val) => val.message);
-//         console.log("message:", message);
-//         return res.status(400).json({
-//           success: false,
-//           error: messages,
-//         });
-//       }
-//       res.status(500).json({
-//         success: false,
-//         error: "Server Error",
-//       });
-//     }
-//   }
-// );
-
-
 // @desc    Get all journals
 // @route   GET /journals
 // @access  Public (Filter by approved) / Private (Admins see all)
@@ -333,11 +192,14 @@ router.get("/journals", async (req, res) => {
   try {
     //  Define the query filter
     // If it's a public request, we ONLY show "approved"
-    let query = { status: "approved" };
+    let query = { status: "pending" };
 
     //  Optional: If you want logged-in Admins/Reviewers to see everything
     // You would check the token here. For the simple public list:
-    const journals = await Journal.find(query).sort({ submittedAt: -1 });
+    
+    //const journals = await Journal.find(query).sort({ submittedAt: -1 });
+
+    const journals = await Journal.find();
 
     const enhancedJournals = journals.map(journal => {
       const journalObj = journal.toObject();

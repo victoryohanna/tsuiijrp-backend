@@ -21,11 +21,37 @@ const journalSchema = new mongoose.Schema(
         required: [true, "Phone number is required"],
         trim: true,
       },
-      address: {
-        type: String,
-        required: [true, "Address is required"],
-        trim: true,
-      },
+      // Address field removed as requested
+    },
+
+    // Journal Information (New Fields)
+    title: {
+      type: String,
+      required: [true, "Journal title is required"],
+      trim: true,
+      index: true,
+    },
+    category: {
+      type: String,
+      required: [true, "Category is required"],
+      enum: [
+        "Humanities",
+        "Social Sciences",
+        "Religion",
+        "Philosophy",
+        "Theology",
+        "Ethics",
+        "Cultural Studies",
+        "History",
+        "Other",
+      ],
+      default: "Other",
+      index: true,
+    },
+    openAccess: {
+      type: Boolean,
+      default: true, // Always true by default
+      required: true,
     },
 
     // File Information
@@ -62,6 +88,7 @@ const journalSchema = new mongoose.Schema(
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending",
+      index: true,
     },
 
     // Review Information
@@ -83,6 +110,7 @@ const journalSchema = new mongoose.Schema(
     submittedAt: {
       type: Date,
       default: Date.now,
+      index: true,
     },
     submissionSource: {
       type: String,
@@ -96,10 +124,12 @@ const journalSchema = new mongoose.Schema(
   }
 );
 
-// Index for better query performance
+// Indexes for better query performance
 journalSchema.index({ "submittedBy.email": 1 });
 journalSchema.index({ status: 1 });
 journalSchema.index({ submittedAt: -1 });
+journalSchema.index({ title: "text", category: 1 }); // Text index for searching
+journalSchema.index({ category: 1, status: 1 }); // Compound index for filtering
 
 // Virtual for formatted submission date
 journalSchema.virtual("formattedSubmittedAt").get(function () {
@@ -119,114 +149,31 @@ journalSchema.virtual("readableFileSize").get(function () {
   return `${size.toFixed(2)} ${units[unitIndex]}`;
 });
 
+// Virtual for formatted title with category
+journalSchema.virtual("displayTitle").get(function () {
+  return `${this.title} (${this.category})`;
+});
+
+// Virtual for submitter full info
+journalSchema.virtual("submitterInfo").get(function () {
+  return {
+    name: this.submittedBy.fullName,
+    email: this.submittedBy.email,
+    phone: this.submittedBy.phoneNumber,
+  };
+});
+
+// Pre-save middleware to ensure openAccess is always true
+journalSchema.pre("save", function (next) {
+  this.openAccess = true;
+  next();
+});
+
+// Pre-update middleware to ensure openAccess remains true
+journalSchema.pre("findOneAndUpdate", function () {
+  this.set({ openAccess: true });
+});
+
 const Journal = mongoose.model("Journal", journalSchema);
 
 module.exports = Journal;
-
-// const mongoose = require("mongoose");
-
-// const JournalSchema = new mongoose.Schema({
-
-//   title: {
-//     type: String,
-//     required: [true, "Please provide a title"],
-//     trim: true,
-//     maxlength: [200, "Title cannot be more than 200 characters"],
-//   },
-//   authors: {
-//     type: [String],
-//     required: [true, "Please provide at least one author"],
-//     validate: {
-//       validator: function (authors) {
-//         return authors.length > 0;
-//       },
-//       message: "Please provide at least one author",
-//     },
-//   },
-//   abstract: {
-//     type: String,
-//     required: [true, "Please provide an abstract"],
-//     trim: true,
-//     minlength: [50, "Abstract must be at least 50 characters"],
-//   },
-//   keywords: {
-//     type: [String],
-//     required: [true, "Please provide at least one keyword"],
-//     validate: {
-//       validator: function (keywords) {
-//         return keywords.length > 0;
-//       },
-//       message: "Please provide at least one keyword",
-//     },
-//   },
-//   journalName: {
-//     type: String,
-//     trim: true,
-//   },
-//   impactFactor: { type: String },
-//   description: { type: String },
-//   publisher: {
-//     type: String,
-//     trim: true,
-//   },
-//   category: {
-//     type: String,
-//     trim: true,
-//   },
-//   issn: {
-//     type: String,
-//     trim: true,
-//   },
-//   publicationDate: {
-//     type: Date,
-//     default: Date.now,
-//   },
-//   fileUrl: {
-//     type: String,
-//     required: [true, "File URL is required"],
-//   },
-//   previewUrl:{
-//     type:String
-//   },
-
-//   cloudinaryPublicId:{
-//     type:String
-//   },
-
-//   fileType: {
-//     type: String,
-//     enum: ["pdf", "doc", "docx"],
-//     required: true,
-//   },
-//   status: {
-//     type: String,
-//     enum: ["pending", "approved", "rejected"],
-//     default: "pending",
-//   },
-//   openAccess: {
-//     type: Boolean,
-//     default: true,
-//   },
-//   references: {
-//     type: [String],
-//   },
-//   citations: {
-//     type: String,
-//   },
-//   submittedAt: {
-//     type: Date,
-//     default: Date.now,
-//   },
-//   updatedAt: {
-//     type: Date,
-//     default: Date.now,
-//   },
-// });
-
-// // Update the updatedAt field before saving
-// JournalSchema.pre("save", function (next) {
-//   this.updatedAt = Date.now();
-//   next();
-// });
-
-// module.exports = mongoose.model("journal", JournalSchema);
