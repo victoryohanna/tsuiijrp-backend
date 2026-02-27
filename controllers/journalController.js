@@ -192,14 +192,15 @@ router.get("/journals", async (req, res) => {
   try {
     //  Define the query filter
     // If it's a public request, we ONLY show "approved"
-    let query = { status: "pending" };
+    // let query = { status: "approved" };
+
+    let query = { }; // show all journals
 
     //  Optional: If you want logged-in Admins/Reviewers to see everything
     // You would check the token here. For the simple public list:
     
-    //const journals = await Journal.find(query).sort({ submittedAt: -1 });
-
-    const journals = await Journal.find();
+    const journals = await Journal.find(query).sort({ submittedAt: -1 });
+    
 
     const enhancedJournals = journals.map(journal => {
       const journalObj = journal.toObject();
