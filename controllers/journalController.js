@@ -400,12 +400,12 @@ router.get("/journals/:id", async (req, res) => {
     }
 
     // Only show approved journals to public
-    if (journal.status !== "approved") {
-      return res.status(403).json({
-        success: false,
-        error: "This journal is currently under review.",
-      });
-    }
+    // if (journal.status !== "approved") {
+    //   return res.status(403).json({
+    //     success: false,
+    //     error: "This journal is currently under review.",
+    //   });
+    // }
 
     const journalObj = journal.toObject();
 
