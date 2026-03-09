@@ -39,7 +39,7 @@ exports.sendReviewInvitation = async (reviewerEmail, journal, reviewToken) => {
   }
 
   // Create the review link using the token (no JWT token in URL)
-  const reviewLink = `${process.env.FRONTEND_URL || process.env.BASE_URL}/review/${reviewToken}`;
+  const reviewLink = `${process.env.FRONTEND_URL || process.env.BASE_URL}/#/review/${reviewToken}`;
 
   // Format file size for display
   const formatFileSize = (bytes) => {
