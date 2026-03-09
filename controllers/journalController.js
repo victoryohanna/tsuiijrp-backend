@@ -141,11 +141,11 @@ router.post(
 
       // Collect all reviewer emails from environment variables
       const reviewerEmails = [
-        //process.env.FIRST_REVIEWER,
-        //process.env.SECOND_REVIEWER,
+        process.env.FIRST_REVIEWER,
+        process.env.SECOND_REVIEWER,
         process.env.THIRD_REVIEWER,
-        //process.env.FOURTH_REVIEWER,
-        //process.env.FIFTH_REVIEWER,
+        process.env.FOURTH_REVIEWER,
+        process.env.FIFTH_REVIEWER,
         process.env.SIXTH_REVIEWER,
       ].filter(email => email && email.trim() !== ''); // Remove empty or undefined emails
 
@@ -373,6 +373,8 @@ router.post(
 //   }
 // });
 
+// controllers/journalController.js - Update the review endpoint
+
 // @desc    Get journal for review via token (no authentication required)
 // @route   GET /review/:token
 // @access  Public (token-based access)
@@ -394,16 +396,29 @@ router.get("/review/:token", async (req, res) => {
     journal.reviewerAccessedAt = new Date();
     await journal.save();
 
-    // Generate signed URL for file download
+    // Generate signed URL for file download with proper filename
     let downloadUrl = journal.fileUrl;
     if (journal.cloudinaryPublicId) {
-      // Generate signed URL that expires in 24 hours
+      // Get file extension from filename or cloudinary public_id
+      const fileExt = path.extname(journal.fileName) || `.${journal.fileType}`;
+      const fileNameWithoutExt = path.basename(journal.fileName, fileExt);
+      
+      // Create a URL with attachment flag and proper filename
+      // Using fl_attachment forces download and allows setting filename
       downloadUrl = cloudinary.url(journal.cloudinaryPublicId, {
         resource_type: "raw",
         type: "private",
         sign_url: true,
         expires_at: Math.round(new Date().getTime() / 1000 + 86400), // 24 hours
+        flags: "attachment", // This forces download
+        // You can also set filename in the URL (Cloudinary Pro feature)
+        // If you have Cloudinary Pro, uncomment:
+        // filename: encodeURIComponent(journal.fileName)
       });
+      
+      // Alternative: Add download parameter to force download with correct filename
+      // This works by adding a query parameter to the URL
+      downloadUrl = `${downloadUrl}#?forcedownload=1&filename=${encodeURIComponent(journal.fileName)}`;
     }
 
     // Return journal data with download URL
@@ -421,6 +436,7 @@ router.get("/review/:token", async (req, res) => {
         submittedAt: journal.submittedAt,
       },
     });
+
   } catch (error) {
     console.error("Error fetching journal for review:", error);
     res.status(500).json({
@@ -429,6 +445,63 @@ router.get("/review/:token", async (req, res) => {
     });
   }
 });
+
+// @desc    Get journal for review via token (no authentication required)
+// @route   GET /review/:token
+// @access  Public (token-based access)
+// router.get("/review/:token", async (req, res) => {
+//   try {
+//     const { token } = req.params;
+
+//     // Find journal by token
+//     const journal = await Journal.findOne({ reviewerToken: token });
+
+//     if (!journal) {
+//       return res.status(404).json({
+//         success: false,
+//         error: "Invalid or expired review link",
+//       });
+//     }
+
+//     // Update access time
+//     journal.reviewerAccessedAt = new Date();
+//     await journal.save();
+
+//     // Generate signed URL for file download
+//     let downloadUrl = journal.fileUrl;
+//     if (journal.cloudinaryPublicId) {
+//       // Generate signed URL that expires in 24 hours
+//       downloadUrl = cloudinary.url(journal.cloudinaryPublicId, {
+//         resource_type: "raw",
+//         type: "private",
+//         sign_url: true,
+//         expires_at: Math.round(new Date().getTime() / 1000 + 86400), // 24 hours
+//       });
+//     }
+
+//     // Return journal data with download URL
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         _id: journal._id,
+//         submittedBy: journal.submittedBy,
+//         title: journal.title,
+//         category: journal.category,
+//         fileName: journal.fileName,
+//         fileType: journal.fileType,
+//         fileSize: journal.fileSize,
+//         downloadUrl,
+//         submittedAt: journal.submittedAt,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error fetching journal for review:", error);
+//     res.status(500).json({
+//       success: false,
+//       error: "Server Error",
+//     });
+//   }
+// });
 
 
 
