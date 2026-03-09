@@ -1,0 +1,95 @@
+const nodemailer = require("nodemailer");
+const path = require("path");
+const { generateToken } = require("./auth");
+const SibApiV3Sdk = require("@getbrevo/brevo");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
+
+// Initialize Brevo
+let apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+let apiKey = apiInstance.authentications['apiKey'];
+apiKey.apiKey = process.env.BREVO_EMAIL_API_KEY; 
+
+//send email using Brevo
+
+exports.sendReviewInvitation = async (ignored, journalId) => {
+  let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+  const token = generateToken(journalId, "reviewer");
+  const reviewLink = `${process.env.BASE_URL}/#/review/${journalId}?token=${token}`;
+
+  const reviewers = [
+    process.env.FIRST_REVIEWER,
+    process.env.SECOND_REVIEWER,
+    process.env.THIRD_REVIEWER,
+    process.env.FOURTH_REVIEWER,
+    process.env.FIFTH_REVIEWER,
+    process.env.SIXTH_REVIEWER,
+  ]
+    .filter((email) => email)
+    .map((email) => ({ email }));
+
+  if (reviewers.length === 0) {
+    console.error("No reviewers found in environment variables.");
+    return false;
+  }
+
+  sendSmtpEmail.subject = "New Journal Submission for Review - IIJRP";
+  sendSmtpEmail.htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; line-height: 1.6;">
+        <div style="background-color: #2c3e50; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">IIJRP Journal Management System</h1>
+        </div>
+        
+        <div style="padding: 20px;">
+          <h2 style="color: #2c3e50;">New Journal Submission for Review</h2>
+          <p>Dear Reviewer,</p>
+          <p>A new journal has been submitted to the International Interdisciplinary Journal of Religion & Philosophy and requires your expert review.</p>
+          
+          <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Journal ID:</strong> ${journalId}</p>
+            <p style="margin: 0;"><strong>Action Required:</strong> Please review the submission</p>
+          </div>
+          
+          <p>Click the button below to access the review platform:</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${reviewLink}" 
+               style="display: inline-block; padding: 12px 24px; background-color: #3498db; 
+                      color: white; text-decoration: none; border-radius: 5px; font-weight: bold;
+                      box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+              ➡️ Review Journal Now
+            </a>
+          </div>
+          
+          <p style="font-size: 14px; color: #666;">
+            <strong>Important:</strong> This link grants direct access to the private submission and will expire in 7 days.
+            For security reasons, do not forward this email.
+          </p>
+          
+          <p>Thank you for your contribution to the academic community.</p>
+          
+          <p style="margin-top: 30px;">
+            Best regards,<br>
+            <strong>Editorial Team</strong><br>
+            IIJRP
+          </p>
+        </div>
+      </div>
+    `;
+
+  sendSmtpEmail.sender = {
+    name: "International Interdisciplinary Journal of Religion & Philosophy",
+    email: process.env.EMAIL_USER,
+  };
+  sendSmtpEmail.to = reviewers;
+
+  try {
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log("Email sent successfully via Brevo API. ID:", data.messageId);
+    return true;
+  } catch (error) {
+    console.error("Brevo API Error:", error.response?.body || error.message);
+    return false;
+  }
+};
+
+
