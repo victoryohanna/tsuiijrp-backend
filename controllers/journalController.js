@@ -16,163 +16,362 @@ require("dotenv").config();
 // @desc    Submit a new journal
 // @route   POST /submit
 // @access  Public
-router.post("/submit", upload.single("file"), async (req, res, next) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        error: "No file uploaded",
-      });
-    }
 
-    // Get form data
-    const { fullName, email, phoneNumber, journalTitle, category } = req.body;
-
-    // Validate required fields
-    if (!fullName || !email || !phoneNumber || !journalTitle || !category) {
-      return res.status(400).json({
-        success: false,
-        error: "Please provide all required fields",
-      });
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        error: "Please provide a valid email address",
-      });
-    }
-
-    // Validate file type
-    const fileExt = path
-      .extname(req.file.originalname)
-      .toLowerCase()
-      .substring(1);
-    const allowedTypes = ["pdf", "doc", "docx"];
-
-    if (!allowedTypes.includes(fileExt)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid file type. Only PDF and Word documents are allowed",
-      });
-    }
-
-    // Upload file to Cloudinary
-    let cloudinaryResult;
+router.post(
+  "/submit",
+  upload.single("file"),
+  async (req, res, next) => {
     try {
-      cloudinaryResult = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            resource_type: "raw",
-            folder: "journal_submissions",
-            type: "private",
-            context: {
-              submitter: fullName,
-              email: email,
-              title: journalTitle,
-            },
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: "No file uploaded",
+        });
+      }
 
-        const bufferStream = new stream.PassThrough();
-        bufferStream.end(req.file.buffer);
-        bufferStream.pipe(uploadStream);
-      });
-    } catch (uploadError) {
-      console.error("Cloudinary upload error:", uploadError);
-      return res.status(500).json({
-        success: false,
-        error: "Failed to upload file to cloud storage",
-      });
-    }
-
-    // Generate unique token for reviewer access
-    const reviewToken = crypto.randomBytes(32).toString("hex");
-
-    // Create journal entry with new fields
-    const journal = await Journal.create({
-      // Submitter information
-      submittedBy: {
+      // Get form data
+      const {
         fullName,
         email,
         phoneNumber,
-      },
+        journalTitle,
+        category,
+      } = req.body;
 
-      // Journal information
-      title: journalTitle,
-      category,
-      openAccess: true, // Always true
+      // Validate required fields
+      if (!fullName || !email || !phoneNumber || !journalTitle || !category) {
+        return res.status(400).json({
+          success: false,
+          error: "Please provide all required fields",
+        });
+      }
 
-      // File information
-      fileUrl: cloudinaryResult.secure_url,
-      fileType: fileExt,
-      fileName: req.file.originalname,
-      fileSize: req.file.size,
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          error: "Please provide a valid email address",
+        });
+      }
 
-      // Cloudinary information
-      cloudinaryPublicId: cloudinaryResult.public_id,
+      // Validate file type
+      const fileExt = path
+        .extname(req.file.originalname)
+        .toLowerCase()
+        .substring(1);
+      const allowedTypes = ["pdf", "doc", "docx"];
 
-      // Review information
-      reviewerToken: reviewToken,
-      reviewerEmail: process.env.SIXTH_REVIEWER, // Default reviewer
+      if (!allowedTypes.includes(fileExt)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid file type. Only PDF and Word documents are allowed",
+        });
+      }
 
-      // Status
-      status: "pending",
+      // Upload file to Cloudinary
+      let cloudinaryResult;
+      try {
+        cloudinaryResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              resource_type: "raw",
+              folder: "journal_submissions",
+              type: "private",
+              context: {
+                submitter: fullName,
+                email: email,
+                title: journalTitle,
+              },
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
 
-      // Timestamps
-      submittedAt: new Date(),
-      submissionSource: "public_form",
-    });
+          const bufferStream = new stream.PassThrough();
+          bufferStream.end(req.file.buffer);
+          bufferStream.pipe(uploadStream);
+        });
+      } catch (uploadError) {
+        console.error("Cloudinary upload error:", uploadError);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to upload file to cloud storage",
+        });
+      }
 
-    // Send notification email to reviewers with the token
-    try {
-      await sendReviewInvitation(
-        process.env.SIXTH_REVIEWER, // Send to first reviewer by default
-        journal,
-        reviewToken
-      );
-    } catch (emailError) {
-      console.error("Failed to send review invitation email:", emailError);
-    }
+      // Generate unique token for reviewer access
+      const reviewToken = crypto.randomBytes(32).toString('hex');
 
-    // Return success response
-    res.status(201).json({
-      success: true,
-      data: {
-        _id: journal._id,
-        fullName: journal.submittedBy.fullName,
-        email: journal.submittedBy.email,
-        title: journal.title,
-        category: journal.category,
-        fileName: journal.fileName,
-        submittedAt: journal.submittedAt,
-        status: journal.status,
-      },
-      message: "Journal submitted successfully. A reviewer has been notified.",
-    });
-  } catch (error) {
-    console.error("Error submitting journal:", error);
+      // Create journal entry with new fields
+      const journal = await Journal.create({
+        // Submitter information
+        submittedBy: {
+          fullName,
+          email,
+          phoneNumber,
+        },
+        
+        // Journal information
+        title: journalTitle,
+        category,
+        openAccess: true, // Always true
+        
+        // File information
+        fileUrl: cloudinaryResult.secure_url,
+        fileType: fileExt,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        
+        // Cloudinary information
+        cloudinaryPublicId: cloudinaryResult.public_id,
+        
+        // Review information
+        reviewerToken: reviewToken,
+        
+        // Status
+        status: "pending",
+        
+        // Timestamps
+        submittedAt: new Date(),
+        submissionSource: "public_form",
+      });
 
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((val) => val.message);
-      return res.status(400).json({
+      // Collect all reviewer emails from environment variables
+      const reviewerEmails = [
+        //process.env.FIRST_REVIEWER,
+        //process.env.SECOND_REVIEWER,
+        process.env.THIRD_REVIEWER,
+        //process.env.FOURTH_REVIEWER,
+        //process.env.FIFTH_REVIEWER,
+        process.env.SIXTH_REVIEWER,
+      ].filter(email => email && email.trim() !== ''); // Remove empty or undefined emails
+
+      // Send notification emails to ALL reviewers
+      if (reviewerEmails.length > 0) {
+        console.log(`📧 Sending review invitations to ${reviewerEmails.length} reviewers`);
+        
+        // Send email to each reviewer individually
+        const emailPromises = reviewerEmails.map(async (reviewerEmail) => {
+          try {
+            await sendReviewInvitation(
+              reviewerEmail,
+              journal,
+              reviewToken
+            );
+            console.log(`✅ Invitation sent to ${reviewerEmail}`);
+            return { success: true, email: reviewerEmail };
+          } catch (error) {
+            console.error(`❌ Failed to send to ${reviewerEmail}:`, error.message);
+            return { success: false, email: reviewerEmail, error: error.message };
+          }
+        });
+
+        // Wait for all emails to be sent (don't await if you want faster response)
+        const results = await Promise.allSettled(emailPromises);
+        
+        const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+        const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length;
+        
+        console.log(`📊 Email summary: ${successful} sent, ${failed} failed`);
+      } else {
+        console.warn("⚠️ No reviewer emails found in environment variables");
+      }
+
+      // Return success response
+      res.status(201).json({
+        success: true,
+        data: {
+          _id: journal._id,
+          fullName: journal.submittedBy.fullName,
+          email: journal.submittedBy.email,
+          title: journal.title,
+          category: journal.category,
+          fileName: journal.fileName,
+          submittedAt: journal.submittedAt,
+          status: journal.status,
+        },
+        message: `Journal submitted successfully. ${reviewerEmails.length} reviewer(s) have been notified.`,
+      });
+
+    } catch (error) {
+      console.error("Error submitting journal:", error);
+      
+      if (error.name === "ValidationError") {
+        const messages = Object.values(error.errors).map((val) => val.message);
+        return res.status(400).json({
+          success: false,
+          error: messages.join(", "),
+        });
+      }
+      
+      res.status(500).json({
         success: false,
-        error: messages.join(", "),
+        error: "Server Error. Please try again later.",
       });
     }
-
-    res.status(500).json({
-      success: false,
-      error: "Server Error. Please try again later.",
-    });
   }
-});
+);
+
+// router.post("/submit", upload.single("file"), async (req, res, next) => {
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({
+//         success: false,
+//         error: "No file uploaded",
+//       });
+//     }
+
+//     // Get form data
+//     const { fullName, email, phoneNumber, journalTitle, category } = req.body;
+
+//     // Validate required fields
+//     if (!fullName || !email || !phoneNumber || !journalTitle || !category) {
+//       return res.status(400).json({
+//         success: false,
+//         error: "Please provide all required fields",
+//       });
+//     }
+
+//     // Validate email format
+//     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+//     if (!emailRegex.test(email)) {
+//       return res.status(400).json({
+//         success: false,
+//         error: "Please provide a valid email address",
+//       });
+//     }
+
+//     // Validate file type
+//     const fileExt = path
+//       .extname(req.file.originalname)
+//       .toLowerCase()
+//       .substring(1);
+//     const allowedTypes = ["pdf", "doc", "docx"];
+
+//     if (!allowedTypes.includes(fileExt)) {
+//       return res.status(400).json({
+//         success: false,
+//         error: "Invalid file type. Only PDF and Word documents are allowed",
+//       });
+//     }
+
+//     // Upload file to Cloudinary
+//     let cloudinaryResult;
+//     try {
+//       cloudinaryResult = await new Promise((resolve, reject) => {
+//         const uploadStream = cloudinary.uploader.upload_stream(
+//           {
+//             resource_type: "raw",
+//             folder: "journal_submissions",
+//             type: "private",
+//             context: {
+//               submitter: fullName,
+//               email: email,
+//               title: journalTitle,
+//             },
+//           },
+//           (error, result) => {
+//             if (error) reject(error);
+//             else resolve(result);
+//           }
+//         );
+
+//         const bufferStream = new stream.PassThrough();
+//         bufferStream.end(req.file.buffer);
+//         bufferStream.pipe(uploadStream);
+//       });
+//     } catch (uploadError) {
+//       console.error("Cloudinary upload error:", uploadError);
+//       return res.status(500).json({
+//         success: false,
+//         error: "Failed to upload file to cloud storage",
+//       });
+//     }
+
+//     // Generate unique token for reviewer access
+//     const reviewToken = crypto.randomBytes(32).toString("hex");
+
+//     // Create journal entry with new fields
+//     const journal = await Journal.create({
+//       // Submitter information
+//       submittedBy: {
+//         fullName,
+//         email,
+//         phoneNumber,
+//       },
+
+//       // Journal information
+//       title: journalTitle,
+//       category,
+//       openAccess: true, // Always true
+
+//       // File information
+//       fileUrl: cloudinaryResult.secure_url,
+//       fileType: fileExt,
+//       fileName: req.file.originalname,
+//       fileSize: req.file.size,
+
+//       // Cloudinary information
+//       cloudinaryPublicId: cloudinaryResult.public_id,
+
+//       // Review information
+//       reviewerToken: reviewToken,
+//       reviewerEmail: process.env.SIXTH_REVIEWER, // Default reviewer
+
+//       // Status
+//       status: "pending",
+
+//       // Timestamps
+//       submittedAt: new Date(),
+//       submissionSource: "public_form",
+//     });
+
+//     // Send notification email to reviewers with the token
+//     try {
+//       await sendReviewInvitation(
+//         process.env.SIXTH_REVIEWER, // Send to first reviewer by default
+//         journal,
+//         reviewToken
+//       );
+//     } catch (emailError) {
+//       console.error("Failed to send review invitation email:", emailError);
+//     }
+
+//     // Return success response
+//     res.status(201).json({
+//       success: true,
+//       data: {
+//         _id: journal._id,
+//         fullName: journal.submittedBy.fullName,
+//         email: journal.submittedBy.email,
+//         title: journal.title,
+//         category: journal.category,
+//         fileName: journal.fileName,
+//         submittedAt: journal.submittedAt,
+//         status: journal.status,
+//       },
+//       message: "Journal submitted successfully. A reviewer has been notified.",
+//     });
+//   } catch (error) {
+//     console.error("Error submitting journal:", error);
+
+//     if (error.name === "ValidationError") {
+//       const messages = Object.values(error.errors).map((val) => val.message);
+//       return res.status(400).json({
+//         success: false,
+//         error: messages.join(", "),
+//       });
+//     }
+
+//     res.status(500).json({
+//       success: false,
+//       error: "Server Error. Please try again later.",
+//     });
+//   }
+// });
 
 // @desc    Get journal for review via token (no authentication required)
 // @route   GET /review/:token
